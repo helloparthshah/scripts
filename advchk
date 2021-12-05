@@ -1,0 +1,16 @@
+#!/bin/bash
+
+if [[ $# -ne 3 ]]; then
+    echo "Usage: advchk [Name of executable] [Name of testfile] [Extension of output files]"
+    exit 2
+fi
+
+for ((i=1;i<=$(ls ${2}*.in -1 | wc -l);i++));
+do
+        echo "Test ${i}"
+        a="./${1} < ${2}${i}.in > ${2}.${3}"
+        b="diff ${2}.${3} ${2}${i}.${3}"
+        eval $a
+        eval $b
+done
+

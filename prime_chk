@@ -1,0 +1,59 @@
+#!/bin/bash
+
+if [[ $# -ne 1 ]]; then
+    echo "Usage: prime_chk [Number of cases]"
+    exit 2
+fi
+
+rm t_usr.out t_ref.out
+
+count=0
+
+for ((i = 0; i < $1; i++)); do
+	arr=("all" "min" "max" "near " "near +" "near -")
+	l=$RANDOM
+	r=$(($RANDOM % 100 + 1))
+	outp="Test $(($i + 1)) $l" 
+	echo $outp
+	echo $outp >> t_usr.out
+	echo $outp >> t_ref.out
+	for j in "${arr[@]}"; do
+		if [[ "$j" == near* ]]; then
+			echo $l $j$r > t1
+			echo $l $j$r > t2
+			./prime_factors $l $j$r >> t1
+			./prime_factors_reference $l $j$r >> t2
+		else
+			./prime_factors $l $j > t1
+			./prime_factors_reference $l $j > t2
+		fi
+		cat t1 >> t_usr.out
+		cat t2 >> t_ref.out
+		b=$(diff t1 t2)
+		tput setaf 2
+		if [ "$b" == "" ] 
+		then
+			let count+=1
+			if [[ "$j" == near* ]]; then
+    				echo $j$r PASS
+			else
+    				echo $j PASS
+			fi
+		else
+			tput setaf 1
+			if [[ "$j" == near* ]]; then
+    				echo $j$r FAIL
+			else
+    				echo $j FAIL
+			fi
+			echo $b
+		fi
+		tput sgr0
+	done
+	trap "echo Total Score: `printf %.2f $(echo "100*$count/6/$1" | bc -l)`% && exit 1" INT
+	echo "---------------------------------------------" >> t_usr.out
+	echo "---------------------------------------------" >> t_ref.out
+	rm t1 t2
+done
+trap times EXIT
+echo Total Score: `printf %.2f $(echo "100*$count/6/$1" | bc -l)`%

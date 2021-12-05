@@ -1,0 +1,144 @@
+#!/usr/bin/env python3
+import sys
+import libevdev
+import time
+import evdev
+from evdev import UInput, AbsInfo, ecodes
+import os
+
+
+def main(args):
+    p = 0
+    i = 0
+    devices = evdev.list_devices()
+
+    for dev in devices:
+        # print('%-12i%s' % (p, evdev.InputDevice(dev).name))
+        if evdev.InputDevice(dev).name == 'CUST0000:00 27C6:0118 Stylus':
+            i = p
+        p += 1
+
+    # i=int(input("Enter number: "))
+
+    device = evdev.InputDevice(devices[i])
+
+    print(device)
+
+    # print(mouse.capabilities(verbose=True))
+
+    device.grab()
+
+    x, y = 0, 0
+
+    dev = libevdev.Device()
+    dev.name = "Custom Stylus"
+
+    dev.enable(libevdev.INPUT_PROP_DIRECT)
+    dev.enable(libevdev.EV_KEY.BTN_TOOL_PEN)
+    dev.enable(libevdev.EV_KEY.BTN_TOOL_RUBBER)
+    # Click
+    dev.enable(libevdev.EV_KEY.BTN_TOUCH)
+    # Press button 1 on pen
+    dev.enable(libevdev.EV_KEY.BTN_STYLUS)
+    # Press button 2 on pen, see great doc
+    dev.enable(libevdev.EV_KEY.BTN_STYLUS2)
+    # Send absolute X coordinate
+    dev.enable(libevdev.EV_ABS.ABS_X,
+               libevdev.InputAbsInfo(minimum=0, maximum=5760, resolution=17))
+    # Send absolute Y coordinate
+    dev.enable(libevdev.EV_ABS.ABS_Y,
+               libevdev.InputAbsInfo(minimum=0, maximum=3240, resolution=17))
+    # Send absolute pressure
+    dev.enable(libevdev.EV_ABS.ABS_PRESSURE,
+               libevdev.InputAbsInfo(minimum=0, maximum=1023))
+    dev.enable(libevdev.EV_SYN.SYN_REPORT)
+    dev.enable(libevdev.EV_SYN.SYN_DROPPED)
+    try:
+        uinput = dev.create_uinput_device()
+        print("New device at {} ({})".format(uinput.devnode, uinput.syspath))
+        # Sleep for a bit so udev, libinput, Xorg, Wayland, ...
+        # all have had a chance to see the device and initialize
+        # it. Otherwise the event will be sent by the kernel but
+        # nothing is ready to listen to the device yet. And it
+        # will never be detected in the futur ;-)
+        time.sleep(1)
+        # Reports that the PEN is close to the surface
+        # Important to make sure xinput can detect (and list)
+        # the pen. Otherwise, it won't write anything in gimp.
+        uinput.send_events([
+            libevdev.InputEvent(libevdev.EV_KEY.BTN_TOUCH,
+                                value=0),
+            libevdev.InputEvent(libevdev.EV_KEY.BTN_TOOL_PEN,
+                                value=1),
+            libevdev.InputEvent(libevdev.EV_SYN.SYN_REPORT,
+                                value=0),
+        ])
+        # Says that the pen it out of range of the tablet. Useful
+        # to make sure you can move your mouse, and to avoid
+        # strange things during the first draw.
+        uinput.send_events([
+            libevdev.InputEvent(libevdev.EV_KEY.BTN_TOUCH,
+                                value=0),
+            libevdev.InputEvent(libevdev.EV_KEY.BTN_TOOL_PEN,
+                                value=0),
+            libevdev.InputEvent(libevdev.EV_SYN.SYN_REPORT,
+                                value=0),
+        ])
+
+        for event in device.read_loop():
+            code, val = event.code, event.value
+
+            if code == ecodes.ABS_MT_POSITION_X:
+                uinput.send_events([
+                    libevdev.InputEvent(libevdev.EV_ABS.ABS_X,
+                                        value=int(val)),
+                    libevdev.InputEvent(libevdev.EV_KEY.BTN_TOUCH,
+                                        value=1),
+                    libevdev.InputEvent(libevdev.EV_KEY.BTN_STYLUS,
+                                        value=0),
+                    libevdev.InputEvent(libevdev.EV_KEY.BTN_STYLUS2,
+                                        value=0),
+                    libevdev.InputEvent(libevdev.EV_KEY.BTN_TOOL_PEN,
+                                        value=1),
+                    libevdev.InputEvent(libevdev.EV_SYN.SYN_REPORT,
+                                        value=0)])
+                # vpen.write(ecodes.EV_ABS, ecodes.ABS_X, int(val))
+
+            if code == ecodes.ABS_MT_POSITION_Y:
+                uinput.send_events([
+                    libevdev.InputEvent(libevdev.EV_ABS.ABS_Y,
+                                        value=int(val)),
+                    libevdev.InputEvent(libevdev.EV_KEY.BTN_TOUCH,
+                                        value=1),
+                    libevdev.InputEvent(libevdev.EV_KEY.BTN_STYLUS,
+                                        value=0),
+                    libevdev.InputEvent(libevdev.EV_KEY.BTN_STYLUS2,
+                                        value=0),
+                    libevdev.InputEvent(libevdev.EV_KEY.BTN_TOOL_PEN,
+                                        value=1),
+                    libevdev.InputEvent(libevdev.EV_SYN.SYN_REPORT,
+                                        value=0)])
+
+            if code == ecodes.ABS_MT_PRESSURE:
+                uinput.send_events([
+                    libevdev.InputEvent(libevdev.EV_ABS.ABS_PRESSURE,
+                                        value=int(val)),
+                    libevdev.InputEvent(libevdev.EV_KEY.BTN_TOUCH,
+                                        value=1),
+                    libevdev.InputEvent(libevdev.EV_KEY.BTN_STYLUS,
+                                        value=0),
+                    libevdev.InputEvent(libevdev.EV_KEY.BTN_STYLUS2,
+                                        value=0),
+                    libevdev.InputEvent(libevdev.EV_KEY.BTN_TOOL_PEN,
+                                        value=1),
+                    libevdev.InputEvent(libevdev.EV_SYN.SYN_REPORT,
+                                        value=0)])
+
+        device.ungrab()
+
+    except KeyboardInterrupt:
+        pass
+
+
+if __name__ == "__main__":
+    main(sys.argv)

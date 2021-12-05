@@ -1,0 +1,11 @@
+#!/bin/bash
+
+ip=`curl -s https://www.privateinternetaccess.com/pages/whats-my-ip/ | 
+	grep "IP Address:" | cut -f2 -d'>' | grep -o '[^ ]*[0-9]'`
+echo "Your IP: $ip"
+loc=`curl -s  "https://ipinfo.io/$ip/" | 
+	python -c 'import json,sys;\
+	result=json.load(sys.stdin);\
+	print(result["'city'"] + ", " + result["'region'"])';`
+
+echo "Your location: $loc"

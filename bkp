@@ -1,0 +1,5 @@
+#! /bin/bash
+
+#rsync -avRL --delete --progress /home/Work $1
+
+rsync -zarvh --progress ~/Work $1

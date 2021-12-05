@@ -1,0 +1,16 @@
+#!/bin/bash
+
+if [[ $# -ne 2 ]]; then
+    echo "Usage: chk [Name of executable] [Extension of output files]"
+    exit 2
+fi
+
+for ((i=1;i<=$(ls test*.in -1 | wc -l);i++));
+do
+        echo "Test $i"
+        a="./${1} < test${i}.in > test.${2}"
+        b="diff test.${2} test${i}.${2}"
+        eval $a
+        eval $b
+done
+

@@ -1,0 +1,17 @@
+#!/bin/bash
+
+if [[ $# -ne 2 ]]; then
+	echo "Usage: ${0} [Number of test cases] [Choice of search method ([l]inear, [b]inary)]"
+	        exit 2
+	fi
+
+for ((i=1;i<=${1};i++));
+do
+        echo "Test ${i}"
+	x="./create_dataset $((10**${i})) $((10**(${i}-1))) 1"
+	echo $x
+        a="echo ${2} | ./city_safety cities_1.dat safety_1.dat res.dat"
+	eval $x
+        eval $a
+	eval "rm cities_1.dat safety_1.dat"
+done
